@@ -47,8 +47,8 @@ export default function AuthModal() {
     e.preventDefault();
     setPwError("");
     setNotice("");
-    if (form.password.length < 8 || form.password.length > 16) {
-      setPwError(authMode === "signup" ? "Password must be 8 to 16 characters" : "Incorrect password.");
+    if (form.password.length < 8 || form.password.length > 32) {
+      setPwError(authMode === "signup" ? "Password must be 8 to 32 characters" : "Incorrect password.");
       return;
     }
     setLoading(true);
@@ -216,7 +216,7 @@ export default function AuthModal() {
                     required
                     placeholder="••••••••"
                     minLength={8}
-                    maxLength={16}
+                    maxLength={32}
                     value={form.password}
                     onChange={(e) => { setForm({ ...form, password: e.target.value }); setPwError(""); }}
                     className="w-full px-4 py-2.5 pr-10 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm text-gray-900 dark:text-white outline-none focus:border-green-400 transition"

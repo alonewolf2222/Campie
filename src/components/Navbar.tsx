@@ -9,6 +9,7 @@ import { useLang } from "@/lib/context";
 import { useAuth } from "@/lib/context";
 import { useModal } from "@/lib/context";
 import type { Language } from "@/lib/i18n";
+import AdminPanel from "./AdminPanel";
 
 const NAV_LINKS = [
   { key: "buy" as const, href: "#buy" },
@@ -27,6 +28,7 @@ export default function Navbar() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifsOpen, setNotifsOpen] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
   const [notifsRead, setNotifsRead] = useState(false);
 
   const openSignIn = () => { setAuthMode("signin"); setShowAuthModal(true); };
@@ -43,6 +45,7 @@ export default function Navbar() {
   };
 
   return (
+    <>
     <nav className="sticky top-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center h-16 gap-3">
@@ -216,6 +219,14 @@ export default function Navbar() {
                     >
                       <List className="w-4 h-4" /> {t("myListings")}
                     </button>
+                    {user.role === "admin" && (
+                      <button
+                        onClick={() => { setShowAdmin(true); setUserMenuOpen(false); }}
+                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 text-left"
+                      >
+                        <ShieldCheck className="w-4 h-4" /> Admin Panel
+                      </button>
+                    )}
                     <button
                       onClick={() => { signOut(); setUserMenuOpen(false); }}
                       className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
@@ -317,5 +328,7 @@ export default function Navbar() {
         )}
       </div>
     </nav>
+    <AdminPanel open={showAdmin} onClose={() => setShowAdmin(false)} />
+    </>
   );
 }

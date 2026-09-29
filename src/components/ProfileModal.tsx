@@ -114,8 +114,8 @@ export default function ProfileModal() {
 
   const savePassword = (e: React.FormEvent) => {
     e.preventDefault();
-    if (pw.next.length < 8 || pw.next.length > 16) {
-      setSaveMsg("Password must be 8 to 16 characters");
+    if (pw.next.length < 8 || pw.next.length > 32) {
+      setSaveMsg("Password must be 8 to 32 characters");
       return;
     }
     if (pw.next !== pw.confirm) { setSaveMsg("New passwords don't match"); return; }
@@ -417,7 +417,7 @@ export default function ProfileModal() {
               <form onSubmit={savePassword} className="space-y-5">
                 {[
                   { label: "Current password", key: "current" as const, ph: "Current password" },
-                  { label: "New password", key: "next" as const, ph: "New password (8 - 16 chars)" },
+                  { label: "New password", key: "next" as const, ph: "New password (8 - 32 chars)" },
                   { label: "Confirm new password", key: "confirm" as const, ph: "Repeat new password" },
                 ].map((fld) => (
                   <div key={fld.key}>
