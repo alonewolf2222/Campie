@@ -53,6 +53,7 @@ export interface User {
   avatar?: string;
   role?: string;
   status?: string;
+  provider?: string;
 }
 
 interface AuthContextType {
@@ -67,6 +68,8 @@ interface AuthContextType {
   setShowProfileModal: (v: boolean) => void;
   showMyListings: boolean;
   setShowMyListings: (v: boolean) => void;
+  showProfilePrompt: boolean;
+  setShowProfilePrompt: (v: boolean) => void;
   updateUser: (u: User) => void;
 }
 
@@ -82,6 +85,8 @@ const AuthContext = createContext<AuthContextType>({
   setShowProfileModal: () => {},
   showMyListings: false,
   setShowMyListings: () => {},
+  showProfilePrompt: false,
+  setShowProfilePrompt: () => {},
   updateUser: () => {},
 });
 
@@ -91,6 +96,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showMyListings, setShowMyListings] = useState(false);
+  const [showProfilePrompt, setShowProfilePrompt] = useState(false);
+
+  const wantsGooglePrompt = (me: User | null): boolean => {
+    return !!me && me.provider === "google" && !(me.university && me.campus && me.level);
+  };
 
   const fetchMe = useCallback(async (token: string): Promise<User | null> => {
     try {
@@ -108,16 +118,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!active) return;
       if (data.session) {
         const me = await fetchMe(data.session.access_token);
-        if (active && me) setUser(me);
+        if (active && me) {
+          setUser(me);
+          setShowProfilePrompt(wantsGooglePrompt(me));
+        }
       }
     });
     const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!active) return;
       if (session) {
         const me = await fetchMe(session.access_token);
-        if (active && me) setUser(me);
+        if (active && me) {
+          setUser(me);
+          setShowProfilePrompt(wantsGooglePrompt(me));
+        }
       } else {
         setUser(null);
+        setShowProfilePrompt(false);
       }
     });
     return () => {
@@ -136,6 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setShowProfileModal(false);
     setShowMyListings(false);
+    setShowProfilePrompt(false);
     localStorage.removeItem("campusmart-user");
     supabase.auth.signOut().catch(() => {});
   };
@@ -161,7 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, signIn, signOut, showAuthModal, setShowAuthModal, authMode, setAuthMode, showProfileModal, setShowProfileModal, showMyListings, setShowMyListings, updateUser }}>
+    <AuthContext.Provider value={{ user, signIn, signOut, showAuthModal, setShowAuthModal, authMode, setAuthMode, showProfileModal, setShowProfileModal, showMyListings, setShowMyListings, showProfilePrompt, setShowProfilePrompt, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

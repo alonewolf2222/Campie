@@ -33,7 +33,14 @@ export default function Navbar() {
 
   const openSignIn = () => { setAuthMode("signin"); setShowAuthModal(true); };
   const openSignUp = () => { setAuthMode("signup"); setShowAuthModal(true); };
-  const openSell = () => { user ? setShowPostModal(true) : openSignIn(); };
+  const openSell = () => {
+    if (!user) return openSignIn();
+    if (!user.university || !user.campus || !user.level) {
+      setShowProfileModal(true);
+      return;
+    }
+    setShowPostModal(true);
+  };
 
   const goHome = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -171,7 +178,7 @@ export default function Navbar() {
 
             {/* Post Listing */}
             <button
-              onClick={() => user ? setShowPostModal(true) : openSignIn()}
+              onClick={openSell}
               className="hidden sm:flex items-center gap-1.5 px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-semibold rounded-full transition shadow-md shadow-green-200 dark:shadow-green-900/40"
             >
               <Plus className="w-4 h-4" />
@@ -317,7 +324,7 @@ export default function Navbar() {
                 </>
               )}
               <button
-                onClick={() => { user ? setShowPostModal(true) : openSignIn(); setMobileOpen(false); }}
+                onClick={() => { openSell(); setMobileOpen(false); }}
                 className="touch-target w-full py-2.5 text-sm font-semibold text-white bg-green-500 rounded-full flex items-center justify-center gap-2 dark:bg-green-500"
               >
                 <Plus className="w-4 h-4" /> {t("postListing")}

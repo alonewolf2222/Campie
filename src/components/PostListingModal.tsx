@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { X, Upload, Phone, Camera, Video, ImagePlus } from "lucide-react";
 import { useLang, useModal, useAuth } from "@/lib/context";
+import { supabase } from "@/lib/supabase";
 
 type ListingType = "sale" | "rent" | "event" | "food";
 
@@ -35,6 +36,7 @@ export default function PostListingModal() {
     freeEvent: false,
   });
   const [submitted, setSubmitted] = useState(false);
+  const [postError, setPostError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imageData, setImageData] = useState<string[]>([]);
 
@@ -67,10 +69,25 @@ export default function PostListingModal() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
+    setPostError("");
 
-    const sellerName = user?.name || "Student User";
-    const sellerUniversity = user?.university || "UG";
-    const sellerLevel = user?.level || "100";
+    if (!user) {
+      setPostError("Please sign in to post.");
+      setSubmitted(false);
+      return;
+    }
+    if (!user.university || !user.campus || !user.level) {
+      setPostError("Set your University, Campus and Level in your Profile before posting.");
+      setSubmitted(false);
+      return;
+    }
+
+    const { data: sess } = await supabase.auth.getSession();
+    const token = sess?.session?.access_token;
+
+    const sellerName = user.name || "Student User";
+    const sellerUniversity = user.university;
+    const sellerLevel = user.level;
     const fallbackImage = `https://ui-avatars.com/api/?name=${encodeURIComponent(form.title || "Item")}&background=10b981&color=fff`;
 
     try {
@@ -135,7 +152,7 @@ export default function PostListingModal() {
 
       const res = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify(payload),
       });
       const result = await res.json();
@@ -147,7 +164,7 @@ export default function PostListingModal() {
       if (fileInputRef.current) fileInputRef.current.value = "";
       setForm({ type: "sale", title: "", description: "", price: "", initialPrice: "", category: "", callNumber: "", callNumber2: "", workingDays: ["Mon", "Tue", "Wed", "Thu", "Fri"], activeHours: "9am - 4pm", rentPeriod: "day", eventDate: "", eventVenue: "", freeEvent: false });
     } catch (err) {
-      console.error(err);
+      setPostError(err instanceof Error ? err.message : "Post failed");
     } finally {
       setSubmitted(false);
     }
@@ -568,6 +585,11 @@ export default function PostListingModal() {
           </div>
 
           {/* Submit */}
+          {postError && (
+            <div className="px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-600 dark:text-red-400">
+              {postError}
+            </div>
+          )}
           <button
             type="submit"
             disabled={submitted}

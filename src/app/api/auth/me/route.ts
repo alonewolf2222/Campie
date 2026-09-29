@@ -70,6 +70,7 @@ export async function GET(req: NextRequest) {
       avatar: profile.avatar || "",
       role: profile.role || "user",
       status: profile.status || "active",
+      provider: au.app_metadata?.provider || "email",
     },
   });
 }

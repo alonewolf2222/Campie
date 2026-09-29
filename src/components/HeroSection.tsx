@@ -11,12 +11,16 @@ const HERO_IMAGES = [
 
 export default function HeroSection() {
   const { t } = useLang();
-  const { user, setShowAuthModal, setAuthMode } = useAuth();
+  const { user, setShowAuthModal, setAuthMode, setShowProfileModal } = useAuth();
   const { setShowPostModal } = useModal();
   const [currentImage, setCurrentImage] = useState(0);
 
   const openPost = () => {
     if (user) {
+      if (!user.university || !user.campus || !user.level) {
+        setShowProfileModal(true);
+        return;
+      }
       setShowPostModal(true);
     } else {
       setAuthMode("signin");

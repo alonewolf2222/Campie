@@ -10,6 +10,7 @@ import Footer from "@/components/Footer";
 import AuthModal from "@/components/AuthModal";
 import PostListingModal from "@/components/PostListingModal";
 import ProfileModal from "@/components/ProfileModal";
+import ProfilePromptModal from "@/components/ProfilePromptModal";
 import MyListingsModal from "@/components/MyListingsModal";
 
 export default function Home() {
@@ -34,6 +35,7 @@ export default function Home() {
       <AuthModal />
       <PostListingModal />
       <ProfileModal />
+      <ProfilePromptModal />
       <MyListingsModal />
     </main>
   );
