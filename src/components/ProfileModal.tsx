@@ -10,6 +10,7 @@ import { useLang, useAuth } from "@/lib/context";
 import UniPicker from "@/components/UniPicker";
 import ItemDetailModal from "@/components/ItemDetailModal";
 import { getFavs } from "@/lib/favourites";
+import { fileToCompressedDataUrl } from "@/lib/compressImage";
 import type { Listing } from "@/lib/mockData";
 
 type Form = {
@@ -95,12 +96,11 @@ export default function ProfileModal() {
 
   if (!showProfileModal || !user) return null;
 
-  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setForm((f) => ({ ...f, avatar: String(reader.result) }));
-    reader.readAsDataURL(file);
+    const dataUrl = await fileToCompressedDataUrl(file, { maxDim: 512, quality: 0.8 });
+    setForm((f) => ({ ...f, avatar: dataUrl }));
   };
 
   const save = (e: React.FormEvent) => {

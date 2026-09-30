@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { X, Upload, Phone, Camera, Video, ImagePlus } from "lucide-react";
 import { useLang, useModal, useAuth } from "@/lib/context";
 import { supabase } from "@/lib/supabase";
+import { fileToCompressedDataUrl, estimateDataUrlKB, MAX_IMAGES } from "@/lib/compressImage";
 
 type ListingType = "sale" | "rent" | "event" | "food";
 
@@ -52,15 +53,21 @@ export default function PostListingModal() {
     if (showPostModal) setForm((f) => ({ ...f, type: postModalType }));
   }, [showPostModal, postModalType]);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
-    files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = () =>
-        setImageData((prev) => [...prev, reader.result as string]);
-      reader.readAsDataURL(file);
-    });
+    const remaining = MAX_IMAGES - imageData.length;
+    const picked = files.slice(0, remaining);
+    if (!picked.length) return;
+    for (const file of picked) {
+      try {
+        const dataUrl = await fileToCompressedDataUrl(file);
+        setImageData((prev) => [...prev, dataUrl]);
+      } catch {
+        /* ignore unreadable files */
+      }
+    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const removeImage = (index: number) => {
@@ -70,12 +77,11 @@ export default function PostListingModal() {
   const storyInputRef = useRef<HTMLInputElement>(null);
   const [storyImageData, setStoryImageData] = useState<string | null>(null);
 
-  const handleStoryImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleStoryImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setStoryImageData(reader.result as string);
-    reader.readAsDataURL(file);
+    const dataUrl = await fileToCompressedDataUrl(file, { maxDim: 720, quality: 0.72 });
+    setStoryImageData(dataUrl);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -168,8 +174,17 @@ export default function PostListingModal() {
         headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify(payload),
       });
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "Post failed");
+      const text = await res.text();
+      let result: any = {};
+      try {
+        result = JSON.parse(text);
+      } catch {
+        result = {};
+      }
+      if (!res.ok) {
+        if (res.status === 413) throw new Error("Photos are too large — use fewer or smaller images.");
+        throw new Error(result.error || "Post failed");
+      }
 
       window.dispatchEvent(new Event("listings-updated"));
       setShowPostModal(false);
@@ -586,22 +601,28 @@ export default function PostListingModal() {
                 ))}
               </div>
             )}
-            <label
-              htmlFor="listingImageInput"
-              className="block border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-6 text-center hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition"
-            >
-              {imageData.length > 0 ? (
-                <span className="flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                  <ImagePlus className="w-5 h-5" /> Add more photos
-                </span>
-              ) : (
-                <>
-                  <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Click to upload photos</p>
-                  <p className="text-xs text-gray-400 mt-1">JPG, PNG up to 10MB each · select multiple</p>
-                </>
-              )}
-            </label>
+            {imageData.length < MAX_IMAGES ? (
+              <label
+                htmlFor="listingImageInput"
+                className="block border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-6 text-center hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition"
+              >
+                {imageData.length > 0 ? (
+                  <span className="flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                    <ImagePlus className="w-5 h-5" /> Add more photos
+                  </span>
+                ) : (
+                  <>
+                    <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Click to upload photos</p>
+                    <p className="text-xs text-gray-400 mt-1">Photos are automatically compressed — up to {MAX_IMAGES} photos</p>
+                  </>
+                )}
+              </label>
+            ) : (
+              <p className="text-xs text-gray-400 mt-1 text-center">
+                Maximum {MAX_IMAGES} photos reached — remove one to add another.
+              </p>
+            )}
             {imageData.length > 0 && (
               <button
                 type="button"

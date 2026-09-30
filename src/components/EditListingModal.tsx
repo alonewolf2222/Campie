@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { X, ImagePlus, Upload, Trash2 } from "lucide-react";
 import { useLang, useAuth } from "@/lib/context";
+import { fileToCompressedDataUrl, MAX_IMAGES } from "@/lib/compressImage";
 
 const CATEGORIES = [
   "Textbooks & Study", "Laptops & Tech", "Furniture & Decor",
@@ -35,15 +36,21 @@ export default function EditListingModal({ item, onClose, onDeleted }: { item: a
   const [doneMsg, setDoneMsg] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
-    files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = () =>
-        setImages((prev) => [...prev, reader.result as string]);
-      reader.readAsDataURL(file);
-    });
+    const remaining = MAX_IMAGES - images.length;
+    const picked = files.slice(0, remaining);
+    if (!picked.length) return;
+    for (const file of picked) {
+      try {
+        const dataUrl = await fileToCompressedDataUrl(file);
+        setImages((prev) => [...prev, dataUrl]);
+      } catch {
+        /* ignore unreadable files */
+      }
+    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const removeImage = (index: number) => {
@@ -71,8 +78,17 @@ export default function EditListingModal({ item, onClose, onDeleted }: { item: a
           images,
         }),
       });
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "Update failed");
+      const text = await res.text();
+      let result: any = {};
+      try {
+        result = JSON.parse(text);
+      } catch {
+        result = {};
+      }
+      if (!res.ok) {
+        if (res.status === 413) throw new Error("Photos are too large — use fewer or smaller images.");
+        throw new Error(result.error || "Update failed");
+      }
       window.dispatchEvent(new Event("listings-updated"));
       setDoneMsg("Saved!");
       setTimeout(() => onClose(result.data), 700);
@@ -238,21 +254,28 @@ export default function EditListingModal({ item, onClose, onDeleted }: { item: a
                 ))}
               </div>
             )}
-            <label
-              onClick={(e) => { e.preventDefault(); fileInputRef.current?.click(); }}
-              className="block border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-5 text-center hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition"
-            >
-              {images.length > 0 ? (
-                <span className="flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                  <ImagePlus className="w-5 h-5" /> Add more photos
-                </span>
-              ) : (
-                <>
-                  <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Click to upload photos</p>
-                </>
-              )}
-            </label>
+            {images.length < MAX_IMAGES ? (
+              <label
+                onClick={(e) => { e.preventDefault(); fileInputRef.current?.click(); }}
+                className="block border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-5 text-center hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition"
+              >
+                {images.length > 0 ? (
+                  <span className="flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                    <ImagePlus className="w-5 h-5" /> Add more photos
+                  </span>
+                ) : (
+                  <>
+                    <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Click to upload photos</p>
+                    <p className="text-xs text-gray-400 mt-1">Photos are automatically compressed — up to {MAX_IMAGES} photos</p>
+                  </>
+                )}
+              </label>
+            ) : (
+              <p className="text-xs text-gray-400 mt-1 text-center">
+                Maximum {MAX_IMAGES} photos reached — remove one to add another.
+              </p>
+            )}
             {images.length > 0 && (
               <button
                 type="button"
