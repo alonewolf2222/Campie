@@ -26,6 +26,7 @@ import type { Listing } from "@/lib/mockData";
 import ItemDetailModal from "./ItemDetailModal";
 import ListingCard from "./ListingCard";
 import AllItemsView from "./AllItemsView";
+import { apiGet } from "@/lib/stats";
 
 const CATEGORIES = [
   { icon: BookOpen, key: "textbooksStudy" as const },
@@ -58,8 +59,8 @@ export default function ListingsSection() {
 
   useEffect(() => {
     const load = () => {
-      fetch("/api/listings")
-        .then((r) => r.json())
+      apiGet("/api/listings")
+        .then((r) => (r ? r.json() : { data: [] }))
         .then((j) => setListings(j.data || []))
         .catch(() => setListings([]));
     };

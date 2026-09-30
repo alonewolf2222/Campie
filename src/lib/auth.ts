@@ -24,3 +24,13 @@ export async function requireProfile(req: NextRequest) {
 export function profileComplete(profile: { university?: string | null; campus?: string | null; level?: string | null }) {
   return !!(profile.university && profile.campus && profile.level);
 }
+
+export async function getAuthedUserId(req: NextRequest): Promise<string | null> {
+  if (!supabaseAdmin) return null;
+  const authHeader = req.headers.get("authorization") || "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+  if (!token) return null;
+  const { data, error } = await supabaseAdmin.auth.getUser(token);
+  if (error || !data.user) return null;
+  return data.user.id;
+}

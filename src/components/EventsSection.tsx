@@ -14,6 +14,8 @@ import {
 import { useLang, useUniversity } from "@/lib/context";
 import type { Event } from "@/lib/mockData";
 import ItemDetailModal from "./ItemDetailModal";
+import LikeButton from "./LikeButton";
+import { bumpStat, apiGet } from "@/lib/stats";
 
 export default function EventsSection() {
   const { t } = useLang();
@@ -33,8 +35,8 @@ export default function EventsSection() {
 
   useEffect(() => {
     const load = () => {
-      fetch("/api/events")
-        .then((r) => r.json())
+      apiGet("/api/events")
+        .then((r) => (r ? r.json() : { data: [] }))
         .then((j) => setEvents(j.data || []))
         .catch(() => setEvents([]));
     };
@@ -119,6 +121,7 @@ export default function EventsSection() {
                     {event.ticketsLeft} {t("ticketsLeft")}
                   </span>
                 </div>
+                <LikeButton itemType="event" itemId={event.id} initialCount={event.likeCount} liked={event.liked} />
               </div>
 
               {/* Details directly on the app background */}
@@ -144,6 +147,7 @@ export default function EventsSection() {
                   <div className="flex gap-2">
                     <a
                       href={`tel:${event.callNumber}`}
+                      onClick={() => bumpStat("event", event.id, "click")}
                       className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full text-xs font-bold border border-blue-200 dark:border-blue-800 hover:bg-blue-100 transition"
                     >
                       <Phone className="w-3.5 h-3.5" />
@@ -152,7 +156,7 @@ export default function EventsSection() {
                   </div>
                 ) : (
                   <button
-                    onClick={(e) => { e.stopPropagation(); setShowContact(event.id); }}
+                    onClick={(e) => { e.stopPropagation(); setShowContact(event.id); bumpStat("event", event.id, "click"); }}
                     className="mt-auto w-full py-2.5 bg-gradient-to-r from-purple-500 to-fuchsia-500 hover:from-purple-600 hover:to-fuchsia-600 text-white text-sm font-bold rounded-full transition"
                   >
                     {t("buyTicket")}

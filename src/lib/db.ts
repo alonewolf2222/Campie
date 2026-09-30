@@ -35,6 +35,9 @@ function mapListing(r: Row): Listing {
     ticketsLeft: r.tickets_left ?? undefined,
     eventDate: r.event_date ?? undefined,
     available: r.available ? true : false,
+    user_id: r.user_id ?? undefined,
+    viewCount: r.view_count ?? 0,
+    clickCount: r.click_count ?? 0,
   };
 }
 
@@ -73,6 +76,7 @@ export async function createListing(data: Omit<Listing, "id" | "sellerAvatar" | 
     call_number2: data.callNumber2 ?? null,
     tickets_left: data.ticketsLeft ?? null,
     event_date: data.eventDate ?? null,
+    user_id: data.user_id ?? null,
     available: 1,
     hidden: false,
   });
@@ -130,6 +134,9 @@ function mapFood(r: Row): FoodItem {
     tags,
     callNumber: r.call_number ?? undefined,
     whatsappNumber: r.whatsapp_number ?? undefined,
+    user_id: r.user_id ?? undefined,
+    viewCount: r.view_count ?? 0,
+    clickCount: r.click_count ?? 0,
   };
 }
 
@@ -160,6 +167,7 @@ export async function createFoodItem(data: Omit<FoodItem, "id">): Promise<FoodIt
     tags: JSON.stringify(data.tags || []),
     call_number: data.callNumber ?? null,
     whatsapp_number: data.whatsappNumber ?? null,
+    user_id: data.user_id ?? null,
     hidden: false,
   });
   if (error) throw new Error(error.message);
@@ -179,6 +187,9 @@ function mapEvent(r: Row): Event {
     ticketsLeft: r.tickets_left,
     callNumber: r.call_number,
     whatsappNumber: r.whatsapp_number,
+    user_id: r.user_id ?? undefined,
+    viewCount: r.view_count ?? 0,
+    clickCount: r.click_count ?? 0,
   };
 }
 
@@ -207,6 +218,7 @@ export async function createEvent(data: Omit<Event, "id">): Promise<Event> {
     tickets_left: data.ticketsLeft,
     call_number: data.callNumber ?? null,
     whatsapp_number: data.whatsappNumber ?? null,
+    user_id: data.user_id ?? null,
     hidden: false,
   });
   if (error) throw new Error(error.message);

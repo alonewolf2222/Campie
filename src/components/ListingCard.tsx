@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { MapPin, ImageOff } from "lucide-react";
 import FavButton from "./FavButton";
+import LikeButton from "./LikeButton";
 
 export interface ListingCardItem {
   id: string;
@@ -13,6 +14,9 @@ export interface ListingCardItem {
   type?: string;
   university?: string;
   rentPeriod?: string;
+  itemType?: string;
+  likeCount?: number;
+  liked?: boolean;
 }
 
 function TypeBadge({ type }: { type?: string }) {
@@ -71,6 +75,14 @@ export default function ListingCard({
         )}
         <TypeBadge type={item.type} />
         <FavButton id={item.id} />
+        {(item.itemType || item.type) && item.itemType !== "none" && (
+          <LikeButton
+            itemType={item.itemType || (item.type === "event" ? "event" : item.type === "food" ? "food" : "listing")}
+            itemId={item.id}
+            initialCount={item.likeCount}
+            liked={item.liked}
+          />
+        )}
       </div>
 
       <div className="p-2.5 flex flex-col gap-1.5">

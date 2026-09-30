@@ -20,6 +20,11 @@ export interface Listing {
   ticketsLeft?: number;
   eventDate?: string;
   available?: boolean;
+  user_id?: string;
+  viewCount?: number;
+  clickCount?: number;
+  likeCount?: number;
+  liked?: boolean;
 }
 
 export interface Event {
@@ -34,6 +39,11 @@ export interface Event {
   ticketsLeft: number;
   callNumber: string;
   whatsappNumber: string;
+  user_id?: string;
+  viewCount?: number;
+  clickCount?: number;
+  likeCount?: number;
+  liked?: boolean;
 }
 
 export interface Story {
@@ -62,6 +72,11 @@ export interface FoodItem {
   tags: string[];
   callNumber?: string;
   whatsappNumber?: string;
+  user_id?: string;
+  viewCount?: number;
+  clickCount?: number;
+  likeCount?: number;
+  liked?: boolean;
 }
 
 export const FOOD_LISTINGS: FoodItem[] = [];

@@ -4,6 +4,10 @@ import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, Heart, Share2, Phone, MessageCircle, ShieldCheck, MapPin, GraduationCap, Pencil, Send, Timer, SlidersHorizontal, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { useLang, useAuth } from "@/lib/context";
 import { isFav, toggleFav, getFavs } from "@/lib/favourites";
+import { supabase } from "@/lib/supabase";
+import { bumpStat } from "@/lib/stats";
+import FollowButton from "./FollowButton";
+import LikeButton from "./LikeButton";
 import EditListingModal from "./EditListingModal";
 import ListingCard from "./ListingCard";
 import AllItemsView from "./AllItemsView";
@@ -79,6 +83,13 @@ function normalize(item: any) {
     whatsappNumber: item.whatsappNumber,
     category: "food",
   };
+}
+
+function itemTypeOf(item: any): string {
+  if (!item) return "listing";
+  if (item.kind === "event") return "event";
+  if (item.kind === "food") return "food";
+  return "listing";
 }
 
 export default function ItemDetailModal({ selectedItem, setSelectedItem, hideSimilar }: { selectedItem: any; setSelectedItem: (item: any) => void; hideSimilar?: boolean }) {
@@ -193,6 +204,31 @@ export default function ItemDetailModal({ selectedItem, setSelectedItem, hideSim
 
   const item = normalize(selectedItem);
   if (!item) return null;
+
+  // Record a view + clear any matching unread notification when an item is opened.
+  useEffect(() => {
+    const sel = selectedItem ? normalize(selectedItem) : null;
+    if (!sel) return;
+    const itemType = sel.kind === "event" ? "event" : sel.kind === "food" ? "food" : "listing";
+    bumpStat(itemType, sel.id, "view");
+    const clearNotif = async () => {
+      try {
+        const { data: sess } = await supabase.auth.getSession();
+        const token = sess?.session?.access_token;
+        if (!token) return;
+        await fetch("/api/notifications/read", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ itemType, itemId: sel.id }),
+        });
+        window.dispatchEvent(new Event("notifications-updated"));
+      } catch {
+        /* ignore */
+      }
+    };
+    clearNotif();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedItem]);
 
   const isFood = item.kind === "food";
 
@@ -515,6 +551,11 @@ export default function ItemDetailModal({ selectedItem, setSelectedItem, hideSim
                 )}
                 <div>
                   <p className="font-semibold text-gray-900 dark:text-white text-sm">{item.seller}</p>
+                  {item.user_id && item.user_id !== user?.id && (
+                    <div className="mt-1.5">
+                      <FollowButton sellerId={item.user_id} sellerName={item.seller} />
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -576,6 +617,7 @@ export default function ItemDetailModal({ selectedItem, setSelectedItem, hideSim
                       } else {
                         setContactOpen(true);
                       }
+                      bumpStat(itemTypeOf(item), item.id, "click");
                     }}
                     className={`flex-1 py-3 md:py-2.5 ${
                       isFood ? "bg-orange-500 hover:bg-orange-600" : "bg-green-500 hover:bg-green-600"
@@ -599,6 +641,7 @@ export default function ItemDetailModal({ selectedItem, setSelectedItem, hideSim
                   </button>
                   <a
                     href={`tel:${item.callNumber || ""}`}
+                    onClick={() => bumpStat(itemTypeOf(item), item.id, "click")}
                     className={`flex-1 flex items-center justify-center gap-2 py-3 md:py-2.5 ${
                   isFood ? "bg-orange-500 hover:bg-orange-600" : "bg-blue-500 hover:bg-blue-600"
                 } text-white font-bold rounded-full transition`}
@@ -608,6 +651,7 @@ export default function ItemDetailModal({ selectedItem, setSelectedItem, hideSim
                   {(item.callNumber2 || item.whatsappNumber) ? (
                     <a
                       href={`tel:${item.callNumber2 || item.whatsappNumber || ""}`}
+                      onClick={() => bumpStat(itemTypeOf(item), item.id, "click")}
                       className={`flex-1 flex items-center justify-center gap-2 py-3 md:py-2.5 ${
                   isFood ? "bg-orange-500 hover:bg-orange-600" : "bg-blue-500 hover:bg-blue-600"
                 } text-white font-bold rounded-full transition`}
@@ -635,6 +679,15 @@ export default function ItemDetailModal({ selectedItem, setSelectedItem, hideSim
                 <Share2 className="w-5 h-5 md:w-4 md:h-4 text-gray-600 dark:text-gray-400" />
                 <span className="hidden md:inline text-sm font-bold">Share</span>
               </button>
+              <LikeButton
+                itemType={itemTypeOf(item)}
+                itemId={item.id}
+                initialCount={item.likeCount}
+                liked={item.liked}
+                variant="inline"
+                iconSize={14}
+                className="md:w-full"
+              />
             </div>
             {shareMsg && (
               <p className="text-xs font-semibold text-green-600 mt-2 text-center">{shareMsg}</p>
