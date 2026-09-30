@@ -14,6 +14,14 @@ const CATEGORIES = [
   "Bags & Accessories", "Anime & Collectibles", "Others",
 ];
 
+const FOOD_CATEGORIES = [
+  { label: "Local Snacks", tags: ["Local", "Snack"] },
+  { label: "Healthy Snacks", tags: ["Healthy", "Snack"] },
+  { label: "Local Drinks", tags: ["Local", "Drinks"] },
+  { label: "Healthy Drinks", tags: ["Healthy", "Drinks"] },
+  { label: "Campus Special", tags: ["Local"] },
+];
+
 export default function PostListingModal() {
   const { t } = useLang();
   const { showPostModal, setShowPostModal, showStoryModal, setShowStoryModal } = useModal();
@@ -115,9 +123,10 @@ export default function PostListingModal() {
         payload.rentPeriod = form.rentPeriod;
       } else if (form.type === "food") {
         endpoint = "/api/food";
+        const foodCat = FOOD_CATEGORIES.find((c) => c.label === form.category);
         payload = {
           name: form.title,
-          specialty: form.category || "Campus Special",
+          specialty: foodCat ? foodCat.label : "Campus Special",
           description: form.description,
           price: Number(form.price || 0),
           image: imageData[0] || fallbackImage,
@@ -126,7 +135,7 @@ export default function PostListingModal() {
           rating: 4.5,
           reviews: 0,
           available: true,
-          tags: ["Local"],
+          tags: foodCat ? foodCat.tags : ["Local"],
           callNumber: form.callNumber,
           callNumber2: form.callNumber2,
           workingDays: form.workingDays,
@@ -280,7 +289,7 @@ export default function PostListingModal() {
                 <button
                   key={type}
                   type="button"
-                  onClick={() => setForm({ ...form, type })}
+                  onClick={() => setForm((f) => ({ ...f, type, category: (type === "food") !== (f.type === "food") ? "" : f.category }))}
                   className={`py-2 rounded-xl text-xs font-bold uppercase tracking-wide border-2 transition ${
                     form.type === type
                       ? type === "sale" ? "bg-orange-500 border-orange-500 text-white"
@@ -440,6 +449,22 @@ export default function PostListingModal() {
               >
                 <option value="">Select a category</option>
                 {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+          )}
+
+          {/* Food Category */}
+          {form.type === "food" && (
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">Food Category</label>
+              <select
+                required
+                value={form.category}
+                onChange={(e) => setForm({ ...form, category: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm text-gray-900 dark:text-white outline-none focus:border-orange-400 transition"
+              >
+                <option value="">Select if it's local snacks, healthy drinks, etc.</option>
+                {FOOD_CATEGORIES.map((c) => <option key={c.label} value={c.label}>{c.label}</option>)}
               </select>
             </div>
           )}
