@@ -200,12 +200,10 @@ export default function ItemDetailModal({ selectedItem, setSelectedItem, hideSim
     return () => window.removeEventListener("favs-updated", sync);
   }, []);
 
-  if (!selectedItem) return null;
-
-  const item = normalize(selectedItem);
-  if (!item) return null;
-
   // Record a view + clear any matching unread notification when an item is opened.
+  // NOTE: this must stay before the early returns — hooks can never be
+  // conditionally skipped or React throws "Rendered more hooks than during
+  // the previous render" and the modal fails to open.
   useEffect(() => {
     const sel = selectedItem ? normalize(selectedItem) : null;
     if (!sel) return;
@@ -229,6 +227,11 @@ export default function ItemDetailModal({ selectedItem, setSelectedItem, hideSim
     clearNotif();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedItem]);
+
+  if (!selectedItem) return null;
+
+  const item = normalize(selectedItem);
+  if (!item) return null;
 
   const isFood = item.kind === "food";
 
