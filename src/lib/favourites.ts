@@ -1,4 +1,4 @@
-const KEY = "campieFavs";
+const KEY = "campieCart";
 
 export function getFavs(): string[] {
   try {
@@ -13,7 +13,7 @@ export function writeFavs(next: string[]) {
   try {
     localStorage.setItem(KEY, JSON.stringify(next));
   } catch {}
-  window.dispatchEvent(new Event("favs-updated"));
+  window.dispatchEvent(new Event("cart-updated"));
 }
 
 export function toggleFav(id: string): string[] {

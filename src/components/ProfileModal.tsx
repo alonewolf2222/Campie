@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import {
   X, Camera, Check, Settings, Shield, Lock, User as UserIcon,
   User as UserIcon2, FileText, Phone, Mail, GraduationCap, University,
-  Heart as HeartIcon, MapPin,
+  MapPin, ShoppingBasket,
 } from "lucide-react";
 import { useLang, useAuth } from "@/lib/context";
 import UniPicker from "@/components/UniPicker";
@@ -26,7 +26,7 @@ type Form = {
 export default function ProfileModal() {
   const { user, showProfileModal, setShowProfileModal, updateUser } = useAuth();
   const { lang, setLang } = useLang();
-  const [tab, setTab] = useState<"profile" | "saved" | "settings" | "privacy" | "password" | "policy">("profile");
+  const [tab, setTab] = useState<"profile" | "cart" | "settings" | "privacy" | "password" | "policy">("profile");
   const [form, setForm] = useState<Form>({
     name: user?.name || "",
     email: user?.email || "",
@@ -53,9 +53,9 @@ export default function ProfileModal() {
     }
   });
   const fileRef = useRef<HTMLInputElement>(null);
-  const [savedItems, setSavedItems] = useState<Listing[]>([]);
-  const [savedLoading, setSavedLoading] = useState(false);
-  const [savedItem, setSavedItem] = useState<Listing | null>(null);
+  const [cartItems, setCartItems] = useState<Listing[]>([]);
+  const [cartLoading, setCartLoading] = useState(false);
+  const [cartItem, setCartItem] = useState<Listing | null>(null);
 
   useEffect(() => {
     if (!showProfileModal || !user) return;
@@ -72,25 +72,25 @@ export default function ProfileModal() {
   }, [showProfileModal, user]);
 
   useEffect(() => {
-    if (!showProfileModal || !user || tab !== "saved") return;
-    const loadSaved = () => {
-      setSavedLoading(true);
+    if (!showProfileModal || !user || tab !== "cart") return;
+    const loadCart = () => {
+      setCartLoading(true);
       fetch("/api/listings")
         .then((r) => r.json())
         .then((j) => {
           const all = (j.data || []) as Listing[];
-          const favIds = getFavs();
-          setSavedItems(all.filter((l) => favIds.includes(l.id)));
+          const cartIds = getFavs();
+          setCartItems(all.filter((l) => cartIds.includes(l.id)));
         })
-        .catch(() => setSavedItems([]))
-        .finally(() => setSavedLoading(false));
+        .catch(() => setCartItems([]))
+        .finally(() => setCartLoading(false));
     };
-    loadSaved();
-    window.addEventListener("favs-updated", loadSaved);
-    window.addEventListener("listings-updated", loadSaved);
+    loadCart();
+    window.addEventListener("cart-updated", loadCart);
+    window.addEventListener("listings-updated", loadCart);
     return () => {
-      window.removeEventListener("favs-updated", loadSaved);
-      window.removeEventListener("listings-updated", loadSaved);
+      window.removeEventListener("cart-updated", loadCart);
+      window.removeEventListener("listings-updated", loadCart);
     };
   }, [showProfileModal, user, tab]);
 
@@ -108,7 +108,7 @@ export default function ProfileModal() {
     const changes = { ...form };
     if (!changes.avatar) changes.avatar = user.avatar || "";
     updateUser({ ...user, ...changes });
-    setSaveMsg("Saved! Keep scrolling, bro.");
+    setSaveMsg("Added to cart!");
     setTimeout(() => { setSaveMsg(""); setShowProfileModal(false); }, 1200);
   };
 
@@ -153,7 +153,7 @@ export default function ProfileModal() {
         </div>
         {[
           { id: "profile" as const, label: "Profile", icon: UserIcon },
-          { id: "saved" as const, label: "Saved", icon: HeartIcon },
+          { id: "cart" as const, label: "Cart", icon: ShoppingBasket },
           { id: "settings" as const, label: "Settings", icon: Settings },
           { id: "privacy" as const, label: "Privacy", icon: Shield },
           { id: "password" as const, label: "Password", icon: Lock },
@@ -291,25 +291,25 @@ export default function ProfileModal() {
             </div>
           )}
 
-          {tab === "saved" && (
+          {tab === "cart" && (
             <div className="max-w-4xl">
-              <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-1">Saved Listings</h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-8">Everything you favourited with the heart — all in one place.</p>
+              <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-1">My Cart</h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-8">Everything you added to your cart — all in one place.</p>
 
-              {savedLoading ? (
+              {cartLoading ? (
                 <p className="text-sm text-gray-500 dark:text-gray-400">Loading...</p>
-              ) : savedItems.length === 0 ? (
+              ) : cartItems.length === 0 ? (
                 <div className="px-8 py-16 rounded-2xl bg-gray-50 dark:bg-gray-800 text-center">
-                  <HeartIcon className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                  <p className="font-bold text-gray-900 dark:text-white">No saved listings yet</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Tap the heart on any listing to save it here.</p>
+                  <ShoppingBasket className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                  <p className="font-bold text-gray-900 dark:text-white">No items in your cart yet</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Tap the basket on any listing to add it here.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                  {savedItems.map((item) => (
+                  {cartItems.map((item) => (
                     <div
                       key={item.id}
-                      onClick={() => setSavedItem(item)}
+                      onClick={() => setCartItem(item)}
                       className="group rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800 transition-all cursor-pointer"
                     >
                       <div className="relative aspect-square w-full overflow-hidden bg-gray-100 dark:bg-gray-800">
@@ -459,7 +459,7 @@ export default function ProfileModal() {
           )}
         </div>
       </main>
-      <ItemDetailModal selectedItem={savedItem} setSelectedItem={setSavedItem} />
+      <ItemDetailModal selectedItem={cartItem} setSelectedItem={setCartItem} />
     </div>
   );
 }

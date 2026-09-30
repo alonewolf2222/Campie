@@ -1,16 +1,18 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Heart, Share2, Phone, MessageCircle, ShieldCheck, MapPin, GraduationCap, Pencil, Send, Timer, SlidersHorizontal, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, ShoppingBasket, Share2, Phone, MessageCircle, ShieldCheck, MapPin, GraduationCap, Pencil, Send, Timer, SlidersHorizontal, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { useLang, useAuth } from "@/lib/context";
-import { isFav, toggleFav, getFavs } from "@/lib/favourites";
+import { toggleFav, getFavs } from "@/lib/favourites";
 import { supabase } from "@/lib/supabase";
 import { bumpStat } from "@/lib/stats";
+import { toggleLikeRemote } from "@/lib/social-client";
 import FollowButton from "./FollowButton";
 import LikeButton from "./LikeButton";
 import EditListingModal from "./EditListingModal";
 import ListingCard from "./ListingCard";
 import AllItemsView from "./AllItemsView";
+import SellerProfileView from "./SellerProfileView";
 import Navbar from "./Navbar";
 import { UNIVERSITIES } from "@/lib/universities";
 
@@ -94,7 +96,7 @@ function itemTypeOf(item: any): string {
 
 export default function ItemDetailModal({ selectedItem, setSelectedItem, hideSimilar }: { selectedItem: any; setSelectedItem: (item: any) => void; hideSimilar?: boolean }) {
   const { t } = useLang();
-  const { user } = useAuth();
+  const { user, setShowAuthModal, setAuthMode } = useAuth();
   const [sortBy, setSortBy] = useState("newest");
   const [fCategory, setFCategory] = useState("all");
   const [fUniversity, setFUniversity] = useState("all");
@@ -103,12 +105,17 @@ export default function ItemDetailModal({ selectedItem, setSelectedItem, hideSim
   const [showContact, setShowContact] = useState(false);
   const [showAllView, setShowAllView] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
-  const [favs, setFavs] = useState<string[]>([]);
+  const [cart, setCart] = useState<string[]>([]);
   const [shareMsg, setShareMsg] = useState("");
   const [activeImg, setActiveImg] = useState(0);
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
+  const lastTapRef = useRef<number | null>(null);
   const [allItems, setAllItems] = useState<any[]>([]);
+  const [likeCount, setLikeCount] = useState(0);
+  const [liked, setLiked] = useState(false);
+  const [likeBusy, setLikeBusy] = useState(false);
+  const [sellerView, setSellerView] = useState<{ id: string; name: string } | null>(null);
 
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMsgs, setChatMsgs] = useState<{ text: string; from: "me" | "seller"; ts: number }[]>([]);
@@ -194,11 +201,17 @@ export default function ItemDetailModal({ selectedItem, setSelectedItem, hideSim
   }, []);
 
   useEffect(() => {
-    const sync = () => setFavs(getFavs());
+    const sync = () => setCart(getFavs());
     sync();
-    window.addEventListener("favs-updated", sync);
-    return () => window.removeEventListener("favs-updated", sync);
+    window.addEventListener("cart-updated", sync);
+    return () => window.removeEventListener("cart-updated", sync);
   }, []);
+
+  useEffect(() => {
+    if (!selectedItem) return;
+    setLikeCount(typeof selectedItem.likeCount === "number" ? selectedItem.likeCount : 0);
+    setLiked(!!selectedItem.liked);
+  }, [selectedItem]);
 
   // Record a view + clear any matching unread notification when an item is opened.
   // NOTE: this must stay before the early returns — hooks can never be
@@ -235,10 +248,34 @@ export default function ItemDetailModal({ selectedItem, setSelectedItem, hideSim
 
   const isFood = item.kind === "food";
 
-  const favorited = favs.includes(item.id);
+  const inCart = cart.includes(item.id);
 
-  const onToggleFav = () => {
+  const onToggleCart = () => {
     toggleFav(item.id);
+  };
+
+  const doLike = async () => {
+    if (!user) {
+      setAuthMode("signin");
+      setShowAuthModal(true);
+      return;
+    }
+    if (likeBusy) return;
+    setLikeBusy(true);
+    try {
+      const { liked: l, likes } = await toggleLikeRemote(itemTypeOf(item), item.id);
+      setLiked(l);
+      setLikeCount(likes);
+    } catch {
+      /* ignore */
+    } finally {
+      setLikeBusy(false);
+    }
+  };
+
+  const openSeller = () => {
+    if (!item.user_id) return;
+    setSellerView({ id: item.user_id, name: item.seller || "Seller" });
   };
 
   const shareItem = () => {
@@ -467,7 +504,7 @@ export default function ItemDetailModal({ selectedItem, setSelectedItem, hideSim
           {/* Left: Image Panel */}
           <div>
             <div
-              className="relative w-full rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-800"
+              className="relative w-full rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-800 touch-pan-y"
               onTouchStart={(e) => {
                 touchStartX.current = e.touches[0].clientX;
                 touchStartY.current = e.touches[0].clientY;
@@ -478,6 +515,17 @@ export default function ItemDetailModal({ selectedItem, setSelectedItem, hideSim
                 const dy = e.changedTouches[0].clientY - touchStartY.current;
                 touchStartX.current = null;
                 touchStartY.current = null;
+                const now = Date.now();
+                const isTap = Math.abs(dx) < 10 && Math.abs(dy) < 10;
+                if (isTap) {
+                  if (lastTapRef.current && now - lastTapRef.current < 300) {
+                    lastTapRef.current = null;
+                    doLike();
+                  } else {
+                    lastTapRef.current = now;
+                  }
+                  return;
+                }
                 if (!item.images || item.images.length < 2) return;
                 if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx)) return;
                 if (dx < 0) setActiveImg((i) => (i + 1) % item.images.length);
@@ -494,14 +542,14 @@ export default function ItemDetailModal({ selectedItem, setSelectedItem, hideSim
                   <button
                     onClick={() => setActiveImg((i) => (i - 1 + item.images.length) % item.images.length)}
                     aria-label="Previous image"
-                    className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/70 active:bg-black/70 transition"
+                    className="hidden md:flex absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/40 text-white items-center justify-center hover:bg-black/70 active:bg-black/70 transition"
                   >
                     <ChevronLeft className="w-5 h-5" />
                   </button>
                   <button
                     onClick={() => setActiveImg((i) => (i + 1) % item.images.length)}
                     aria-label="Next image"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/70 active:bg-black/70 transition"
+                    className="hidden md:flex absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/40 text-white items-center justify-center hover:bg-black/70 active:bg-black/70 transition"
                   >
                     <ChevronRight className="w-5 h-5" />
                   </button>
@@ -541,25 +589,28 @@ export default function ItemDetailModal({ selectedItem, setSelectedItem, hideSim
           <div className="flex flex-col">
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-4">
-                {item.sellerAvatar ? (
-                  <img
-                    src={item.sellerAvatar}
-                    alt={item.seller}
-                    className="w-10 h-10 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white font-bold text-sm">
-                    {(item.seller || "?").charAt(0).toUpperCase()}
-                  </div>
-                )}
-                <div>
-                  <p className="font-semibold text-gray-900 dark:text-white text-sm">{item.seller}</p>
-                  {item.user_id && item.user_id !== user?.id && (
-                    <div className="mt-1.5">
-                      <FollowButton sellerId={item.user_id} sellerName={item.seller} />
+                <button
+                  type="button"
+                  onClick={openSeller}
+                  className="flex items-center gap-3 text-left min-w-0"
+                  title={`View ${item.seller}'s profile`}
+                >
+                  {item.sellerAvatar ? (
+                    <img
+                      src={item.sellerAvatar}
+                      alt={item.seller}
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white font-bold text-sm">
+                      {(item.seller || "?").charAt(0).toUpperCase()}
                     </div>
                   )}
-                </div>
+                  <span className="font-semibold text-gray-900 dark:text-white text-sm truncate">{item.seller}</span>
+                </button>
+                {item.user_id && item.user_id !== user?.id && (
+                  <FollowButton sellerId={item.user_id} sellerName={item.seller} />
+                )}
               </div>
 
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 break-words">{item.title}</h2>
@@ -611,7 +662,7 @@ export default function ItemDetailModal({ selectedItem, setSelectedItem, hideSim
                     : "border-green-500 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20"
                 } font-bold rounded-full transition`}
                   >
-                    <MessageCircle className="w-4 h-4" /> Chat
+                    <MessageCircle className="w-4 h-4" /> <span className="hidden md:inline">Chat</span>
                   </button>
                   <button
                     onClick={() => {
@@ -640,7 +691,7 @@ export default function ItemDetailModal({ selectedItem, setSelectedItem, hideSim
                     : "border-green-500 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20"
                 } font-bold rounded-full transition`}
                   >
-                    <MessageCircle className="w-4 h-4" /> Chat
+                    <MessageCircle className="w-4 h-4" /> <span className="hidden md:inline">Chat</span>
                   </button>
                   <a
                     href={`tel:${item.callNumber || ""}`}
@@ -665,15 +716,15 @@ export default function ItemDetailModal({ selectedItem, setSelectedItem, hideSim
                 </>
               )}
               <button
-                onClick={onToggleFav}
+                onClick={onToggleCart}
                 className={`p-3 border rounded-xl md:w-full md:py-2.5 md:px-4 md:flex md:items-center md:justify-center md:gap-2 md:rounded-full transition ${
-                  favorited
-                    ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
+                  inCart
+                    ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
                     : "border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
                 }`}
               >
-                <Heart className={`w-5 h-5 md:w-4 md:h-4 ${favorited ? "text-red-500 fill-red-500" : "text-gray-600 dark:text-gray-400"}`} />
-                <span className="hidden md:inline text-sm font-bold">{favorited ? "Added to Watchlist" : "Add to Watchlist"}</span>
+                <ShoppingBasket className={`w-5 h-5 md:w-4 md:h-4 ${inCart ? "text-green-500 fill-green-500" : "text-gray-600 dark:text-gray-400"}`} />
+                <span className="hidden md:inline text-sm font-bold">{inCart ? "Added to Cart" : "Add to Cart"}</span>
               </button>
               <button
                 onClick={shareItem}
@@ -690,6 +741,7 @@ export default function ItemDetailModal({ selectedItem, setSelectedItem, hideSim
                 variant="inline"
                 iconSize={14}
                 className="md:w-full"
+                controlled={{ active: liked, count: likeCount, busy: likeBusy, onToggle: doLike }}
               />
             </div>
             {shareMsg && (
@@ -869,6 +921,19 @@ export default function ItemDetailModal({ selectedItem, setSelectedItem, hideSim
           onDeleted={() => {
             setShowEdit(false);
             setSelectedItem(null);
+          }}
+        />
+      )}
+
+      {sellerView && (
+        <SellerProfileView
+          sellerId={sellerView.id}
+          fallbackName={sellerView.name}
+          onBack={() => setSellerView(null)}
+          onOpenItem={(it) => {
+            setSellerView(null);
+            setSelectedItem(it);
+            setShowContact(false);
           }}
         />
       )}
