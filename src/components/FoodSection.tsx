@@ -10,7 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { useLang } from "@/lib/context";
+import { useLang, useModal, useAuth } from "@/lib/context";
 import type { FoodItem } from "@/lib/mockData";
 import ItemDetailModal from "./ItemDetailModal";
 
@@ -18,11 +18,26 @@ const FILTERS = ["All", "Local", "Snack", "Healthy", "Drinks"];
 
 export default function FoodSection() {
   const { t } = useLang();
+  const { openPostModal } = useModal();
+  const { user, setShowAuthModal, setAuthMode, setShowProfileModal } = useAuth();
   const [foods, setFoods] = useState<FoodItem[]>([]);
   const [showContact, setShowContact] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState("All");
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
   const trackRef = useRef<HTMLDivElement>(null);
+
+  const openListFood = () => {
+    if (user) {
+      if (!user.university || !user.campus || !user.level) {
+        setShowProfileModal(true);
+        return;
+      }
+      openPostModal("food");
+    } else {
+      setAuthMode("signin");
+      setShowAuthModal(true);
+    }
+  };
 
   const scrollMarquee = (dir: number) => {
     const track = trackRef.current;
@@ -181,7 +196,10 @@ export default function FoodSection() {
         {/* Bottom CTA */}
         <div className="text-center mt-10">
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Are you a food vendor on campus?</p>
-          <button className="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-full text-sm transition shadow-lg shadow-orange-200 dark:shadow-orange-900/40">
+          <button
+            onClick={openListFood}
+            className="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-full text-sm transition shadow-lg shadow-orange-200 dark:shadow-orange-900/40"
+          >
             List Your Food Business
           </button>
         </div>

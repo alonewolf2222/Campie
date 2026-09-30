@@ -188,9 +188,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export const useAuth = () => useContext(AuthContext);
 
 // ── Modal Context ─────────────────────────────────────────────────────────────
+export type PostModalType = "sale" | "rent" | "event" | "food";
+
 interface ModalContextType {
   showPostModal: boolean;
   setShowPostModal: (v: boolean) => void;
+  openPostModal: (type?: PostModalType) => void;
+  postModalType: PostModalType;
   showStoryModal: boolean;
   setShowStoryModal: (v: boolean) => void;
 }
@@ -198,16 +202,33 @@ interface ModalContextType {
 const ModalContext = createContext<ModalContextType>({
   showPostModal: false,
   setShowPostModal: () => {},
+  openPostModal: () => {},
+  postModalType: "sale",
   showStoryModal: false,
   setShowStoryModal: () => {},
 });
 
 export function ModalProvider({ children }: { children: ReactNode }) {
   const [showPostModal, setShowPostModal] = useState(false);
+  const [postModalType, setPostModalType] = useState<PostModalType>("sale");
   const [showStoryModal, setShowStoryModal] = useState(false);
 
+  const openPostModal = (type: PostModalType = "sale") => {
+    setPostModalType(type);
+    setShowPostModal(true);
+  };
+
   return (
-    <ModalContext.Provider value={{ showPostModal, setShowPostModal, showStoryModal, setShowStoryModal }}>
+    <ModalContext.Provider
+      value={{
+        showPostModal,
+        setShowPostModal,
+        openPostModal,
+        postModalType,
+        showStoryModal,
+        setShowStoryModal,
+      }}
+    >
       {children}
     </ModalContext.Provider>
   );

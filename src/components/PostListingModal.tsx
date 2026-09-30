@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X, Upload, Phone, Camera, Video, ImagePlus } from "lucide-react";
 import { useLang, useModal, useAuth } from "@/lib/context";
 import { supabase } from "@/lib/supabase";
@@ -15,8 +15,8 @@ const CATEGORIES = [
 ];
 
 const FOOD_CATEGORIES = [
-  { label: "Local Snacks", tags: ["Local", "Snack"] },
-  { label: "Healthy Snacks", tags: ["Healthy", "Snack"] },
+  { label: "Local", tags: ["Local", "Snack"] },
+  { label: "Fruit and Vegetables", tags: ["Healthy", "Snack"] },
   { label: "Local Drinks", tags: ["Local", "Drinks"] },
   { label: "Healthy Drinks", tags: ["Healthy", "Drinks"] },
   { label: "Campus Special", tags: ["Local"] },
@@ -24,7 +24,7 @@ const FOOD_CATEGORIES = [
 
 export default function PostListingModal() {
   const { t } = useLang();
-  const { showPostModal, setShowPostModal, showStoryModal, setShowStoryModal } = useModal();
+  const { showPostModal, setShowPostModal, postModalType, showStoryModal, setShowStoryModal } = useModal();
   const { user, updateUser } = useAuth();
 
   const [form, setForm] = useState({
@@ -47,6 +47,10 @@ export default function PostListingModal() {
   const [postError, setPostError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imageData, setImageData] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (showPostModal) setForm((f) => ({ ...f, type: postModalType }));
+  }, [showPostModal, postModalType]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -463,7 +467,7 @@ export default function PostListingModal() {
                 onChange={(e) => setForm({ ...form, category: e.target.value })}
                 className="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm text-gray-900 dark:text-white outline-none focus:border-orange-400 transition"
               >
-                <option value="">Select if it's local snacks, healthy drinks, etc.</option>
+                <option value="">Select if it's local, fruit &amp; vegetables, drinks, etc.</option>
                 {FOOD_CATEGORIES.map((c) => <option key={c.label} value={c.label}>{c.label}</option>)}
               </select>
             </div>
