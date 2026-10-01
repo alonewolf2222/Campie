@@ -16,7 +16,7 @@ import ItemDetailModal from "./ItemDetailModal";
 import LikeButton from "./LikeButton";
 import { bumpStat, apiGet } from "@/lib/stats";
 
-const FILTERS = ["All", "Local", "Snack", "Healthy", "Drinks"];
+const FILTERS = ["All", "Local", "Local Snacks", "Fruits & Vegetables", "Snacks", "Healthy", "Drinks"];
 
 export default function FoodSection() {
   const { t } = useLang();
@@ -61,11 +61,22 @@ export default function FoodSection() {
     return () => window.removeEventListener("listings-updated", load);
   }, []);
 
-  const filtered = activeFilter === "All"
+  const singular = (s: string) => (s.toLowerCase().endsWith("s") ? s.toLowerCase().slice(0, -1) : String(s).toLowerCase());
+
+const tagMatches = (tag: string, term: string) =>
+  tag.startsWith(term.toLowerCase()) ||
+  tag.includes(term.toLowerCase()) ||
+  singular(tag).startsWith(singular(term)) ||
+  tag.toLowerCase().startsWith(singular(term)) ||
+  singular(tag) === singular(term);
+
+const filtered = activeFilter === "All"
     ? foods
-    : foods.filter((f) =>
-        f.tags.some((tag) => tag.toLowerCase().startsWith(activeFilter.toLowerCase()))
-      );
+    : foods.filter((f) => {
+        const tags = (f.tags || []).map((t) => t.toLowerCase());
+        const terms = activeFilter.replace(/&/g, " ").split(/\s+/).filter(Boolean);
+        return terms.every((term) => tags.some((tag) => tagMatches(tag, term)));
+      });
 
   return (
     <section id="food" className="py-14 bg-gradient-to-br from-white via-white to-white dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">

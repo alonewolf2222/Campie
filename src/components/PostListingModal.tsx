@@ -16,11 +16,13 @@ const CATEGORIES = [
 ];
 
 const FOOD_CATEGORIES = [
-  { label: "Local", tags: ["Local", "Snack"] },
-  { label: "Fruit and Vegetables", tags: ["Healthy", "Snack"] },
+  { label: "Local", tags: ["Local"] },
+  { label: "Local Snacks", tags: ["Local Snacks", "Local", "Snack"] },
+  { label: "Fruits & Vegetables", tags: ["Fruits & Vegetables", "Fruits", "Vegetables"] },
+  { label: "Healthy", tags: ["Healthy"] },
   { label: "Local Drinks", tags: ["Local", "Drinks"] },
   { label: "Healthy Drinks", tags: ["Healthy", "Drinks"] },
-  { label: "Campus Special", tags: ["Local"] },
+  { label: "Campus Special", tags: ["Campus Special", "Local"] },
 ];
 
 export default function PostListingModal() {
